@@ -153,7 +153,7 @@
 (defn mapunwrap [x]
   (:request x))
 
-(defn make-runner-volitile [{:keys [^"[Lclojure.lang.IFn;" fns ->fiber unwrap-state]
+(defn make-runner-volatile [{:keys [^"[Lclojure.lang.IFn;" fns ->fiber unwrap-state]
                              :as compiled}]
   (fn real-fn [idx mode state]
     (let [old-mode (int @mode)
@@ -167,7 +167,7 @@
       )))
 
 
-(defn invoker-node-volitile
+(defn invoker-node-volatile
   ([^IFn f success-out fail-out success-idx fail-idx in1]
    (fn [^"[Ljava.lang.Object;" x idx mode]
      (try
@@ -224,7 +224,7 @@
          (aset x fail-out e)))
      x)))
 
-(defn terminal-invoker-node-volitile
+(defn terminal-invoker-node-volatile
   ([^IFn f success-out fail-out success-idx fail-idx in1]
    (fn [^"[Ljava.lang.Object;" x idx mode]
      (try
@@ -292,16 +292,13 @@
   (def state-compiled  (make-runner {:fns          (into-array Object (-> []
                                                                           (into
                                                                             (map (fn [x]
-                                                                                   (invoker-node inc 2 nil (inc x) nil 2))
-                                                                                 )
-                                                                            (range 5000))
+                                                                                   (invoker-node inc 2 nil (inc x) nil 2)))
+                                                                            (range 500))
                                                                           (into
                                                                             (map (fn [x]
                                                                                    (invoker-node inc 2 nil (inc x) nil 2)))
-                                                                            (range 5000 9999))
+                                                                            (range 500 999))
                                                                           (conj (terminal-invoker-node inc 2 nil nil nil 2))))
-                                     :end-enter    5000
-                                     :end-leave    10000
                                      :get-mode get-mode
                                      :get-index get-index
                                      ;:error? #(instance? Throwable %)
@@ -312,20 +309,32 @@
              (aset a 1 0)
              (aset a 2 0)
              (state-compiled a)))
+  ;Evaluation count : 424200 in 60 samples of 7070 calls.
+  ;Execution time mean : 145.369826 µs
+  ;Execution time std-deviation : 7.846599 µs
+  ;Execution time lower quantile : 138.186597 µs ( 2.5%)
+  ;Execution time upper quantile : 168.695526 µs (97.5%)
+  ;Overhead used : 6.065763 ns
+  ;
+  ;Found 8 outliers in 60 samples (13.3333 %)
+  ;low-severe	 2 (3.3333 %)
+  ;low-mild	 6 (10.0000 %)
+  ;Variance from outliers : 40.1149 % Variance is moderately inflated by outliers
 
-  (def volatile-compiled  (make-runner-volitile {:fns          (into-array Object (-> []
+
+  (def volatile-compiled  (make-runner-volatile {:fns          (into-array Object (-> []
                                                                      (into
                                                                        (map (fn [x]
-                                                                              (invoker-node-volitile inc 0 nil (inc x) nil 0))
+                                                                              (invoker-node-volatile inc 0 nil (inc x) nil 0))
                                                                             )
-                                                                       (range 5000))
+                                                                       (range 500))
                                                                      (into
                                                                        (map (fn [x]
-                                                                              (invoker-node-volitile inc 0 nil (inc x) nil 0)))
-                                                                       (range 5000 9999))
-                                                                     (conj (terminal-invoker-node-volitile inc 0 nil nil nil 0))))
-                                :end-enter    5000
-                                :end-leave    10000
+                                                                              (invoker-node-volatile inc 0 nil (inc x) nil 0)))
+                                                                       (range 500 999))
+                                                                     (conj (terminal-invoker-node-volatile inc 0 nil nil nil 0))))
+                                :end-enter    500
+                                :end-leave    1000
                                 ;:error? #(instance? Throwable %)
                                 :unwrap-state unwrap0}))
   (c/bench (let [a (make-array Object 1)
@@ -339,16 +348,16 @@
 
 
 
-  (def compiled  (make-runner3 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 10000 (repeat inc))))
-                                :end-enter    10000
-                                :end-leave    20000
+  (def compiled  (make-runner3 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 1000 (repeat inc))))
+                                :end-enter    1000
+                                :end-leave    2000
                                 ;:error? #(instance? Throwable %)
                                 :unwrap-state identity}))
   (c/bench (compiled 0 (volatile! 0) 0))
 
-  (def compiled5  (make-runner5 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 10000 (repeat (invoker inc 0 0)))))
-                                 :end-enter    10000
-                                 :end-leave    20000
+  (def compiled5  (make-runner5 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 1000 (repeat (invoker inc 0 0)))))
+                                 :end-enter    1000
+                                 :end-leave    2000
                                  ;:error? #(instance? Throwable %)
                                  :unwrap-state unwrap0}))
   (c/bench (let [a (make-array Object 1)
@@ -357,17 +366,17 @@
              (compiled5 0 mode a)))
 
 
-  (def compiled5a  (make-runner5 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 10000 (repeat mapincer))))
-                                 :end-enter    10000
-                                 :end-leave    20000
+  (def compiled5a  (make-runner5 {:fns          (into-array Object (mapcat (fn [x] [x nil]) (take 1000 (repeat mapincer))))
+                                 :end-enter    1000
+                                 :end-leave    2000
                                  ;:error? #(instance? Throwable %)
                                  :unwrap-state mapunwrap}))
   (let [a {:request 0}]
     (c/bench (compiled5a 0 (volatile! 0) a)))
 
-  (def compiled4  (make-runner4 {:fns          (into-array Object (take 10000 (repeat inc)))
-                                 :end-enter    5000
-                                 :end-leave    10000
+  (def compiled4  (make-runner4 {:fns          (into-array Object (take 1000 (repeat inc)))
+                                 :end-enter    500
+                                 :end-leave    1000
                                  ;:error? #(instance? Throwable %)
                                  :unwrap-state identity}))
   (c/bench (compiled4 0 (volatile! 0) 0))
@@ -392,7 +401,7 @@
     (fn [request respond raise]
       (handler (inc request) (fn [x] (respond (inc x))) raise)))
   (def comp-async-middleware (transduce
-                         (take 5000)
+                         (take 500)
                          (fn ([acc ] acc)
                            ([acc mid]
                             (mid acc)))
@@ -403,33 +412,3 @@
 
 
 )
-
-
-(comment
-  ;interceptor virtual call stack
-  ;:prefork
-  ;fork
-  ;:environment
-  ;:leave
-  ;:finally
-  ;join
-  :type :with-resource
-  :type :fn
-  [:enter :leave :error :finally :recur?]
-  :return-key
-  :args
-  [{:enter   x
-    :prefork fn
-    :fork    {:name {:chain   chain
-
-                     :failure :all}}}
-   {:join    [:name]
-    :join-fn fn
-    :forked  :joined
-    :mainkey :main}
-   {:loop-impl binding
-    :loop      chain}]
-
-
-
-  )

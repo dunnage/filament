@@ -4,12 +4,12 @@
 (set! *warn-on-reflection* true)
 
 (defn make-runner [{:keys [^"[Lclojure.lang.IFn;" fns ->fiber unwrap-state
-                                 get-mode get-index]
+                                 ^IFn get-mode ^IFn get-index]
                           :as compiled}]
   (fn real-fn [state]
-    (let [old-mode (int (get-mode state))]
+    (let [old-mode (int (.invoke get-mode state))]
       (case old-mode
-        (0 1 2) (let [current-idx (get-index state)
+        (0 1 2) (let [current-idx (.invoke get-index state)
                       next-fn ^AFn (aget fns current-idx)
                       new-state (.invoke next-fn state)]
                   (recur new-state))
@@ -162,8 +162,8 @@
                                                                              (invoker-node inc 2 nil (inc x) nil 2)))
                                                                       (range 5000 9999))
                                                                     (conj (terminal-invoker-node inc 2 nil nil nil 2))))
-                               :end-enter    5000
-                               :end-leave    10000
+                               :get-mode   get-mode
+                               :get-index  get-index
                                ;:error? #(instance? Throwable %)
                                :unwrap-state (unwrap 2)}))
   (let [a (make-array Object 3)]
