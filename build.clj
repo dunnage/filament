@@ -1,29 +1,27 @@
 (ns build
-  (:refer-clojure :exclude [test])
+  (:refer-clojure :exclude [test compile])
   (:require [clojure.tools.build.api :as b] ; for b/git-count-revs
             [org.corfield.build :as bb]))
 
 (def lib 'net.clojars.dunnage/filament)
-(def version "0.1.0-SNAPSHOT")
-#_ ; alternatively, use MAJOR.MINOR.COMMITS:
+#_ (def version "0.1.0-SNAPSHOT")
+; alternatively, use MAJOR.MINOR.COMMITS:
 (def version (format "1.0.%s" (b/git-count-revs nil)))
 
 (defn test "Run the tests." [opts]
   (bb/run-tests opts))
 
-(defn ci "Run the CI pipeline of tests (and build the JAR)." [opts]
-  (-> opts
-      (assoc :lib lib :version version)
-      (bb/run-tests)
-      (bb/clean)
-      (bb/jar)))
+(def class-dir "target/classes")
+(def basis (b/create-basis {:project "deps.edn"
+                            :aliases [:build-config]
+                            }))
 
-(defn install "Install the JAR locally." [opts]
-  (-> opts
-      (assoc :lib lib :version version)
-      (bb/install)))
 
-(defn deploy "Deploy the JAR to Clojars." [opts]
-  (-> opts
-      (assoc :lib lib :version version)
-      (bb/deploy)))
+(defn clean [_]
+      (b/delete {:path "target"}))
+
+(defn compile [_]
+      (b/javac {:src-dirs   ["src-java"]
+                :class-dir  class-dir
+                :basis      basis
+                :javac-opts ["-source" "11" "-target" "11"]}))

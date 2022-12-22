@@ -3,7 +3,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn make-runner [{:keys [^"[Lclojure.lang.IFn;" fns ->fiber unwrap-state
+(defn make-runner [{:keys [^"[Lclojure.lang.IFn;" fns ^IFn ->fiber ^IFn unwrap-state
                                  ^IFn get-mode ^IFn get-index]
                           :as compiled}]
   (fn real-fn [state]
