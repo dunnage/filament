@@ -24,6 +24,10 @@ public class Filament {
         state = s;
     }
 
+    public Filament copy(Object[] s) {
+        return new Filament(tasks,s,makeFiber,unwrapState,getMode,getIndex);
+    }
+
     public Object  run() {
         while (true) {
             int oldmode = ((Long) getMode.invoke(state)).intValue();

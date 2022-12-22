@@ -303,6 +303,8 @@
   (.reuse f (make-state))
   (.run f))
 
+(defn cloned-fiber [^Filament f]
+  (.run ^Filament (.copy f ^"[Ljava.lang.Object;" (make-state))))
 (comment
   (def state-compiled (make-runner {:fns          (into-array Object (-> []
                                                                          (into
@@ -349,6 +351,7 @@
                      ^IFn get-index))
 
   (c/bench (reuse-fiber filament))
+  (c/bench (cloned-fiber filament))
 
 
   (def volatile-compiled (make-runner-volatile {:fns          (into-array Object (-> []
