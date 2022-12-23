@@ -1,7 +1,9 @@
 (ns dunnage.bench
   (:require [criterium.core :as c]
             [dunnage.filament :refer
-             [make-runner invoker-node terminal-invoker-node
+             [make-runner catching-invoker-node
+              invoker-node terminal-invoker-node
+              make-catching-runner
               get-mode get-index unwrap]])
   (:import (clojure.lang IFn AFn)
            (dunnage Filament)))
@@ -309,11 +311,11 @@
   (def state-compiled (make-runner {:fns          (into-array Object (-> []
                                                                          (into
                                                                            (map (fn [x]
-                                                                                  (invoker-node inc 2 nil (inc x) nil 2)))
+                                                                                  (catching-invoker-node inc 2 nil (inc x) nil 2)))
                                                                            (range 500))
                                                                          (into
                                                                            (map (fn [x]
-                                                                                  (invoker-node inc 2 nil (inc x) nil 2)))
+                                                                                  (catching-invoker-node inc 2 nil (inc x) nil 2)))
                                                                            (range 500 999))
                                                                          (conj (terminal-invoker-node inc 2 nil nil nil 2))))
                                     :get-mode     get-mode
@@ -333,15 +335,35 @@
   ;low-mild	 6 (10.0000 %)
   ;Variance from outliers : 40.1149 % Variance is moderately inflated by outliers
 
+
+  (def state-compiled2 (make-catching-runner {:fns          (into-array Object (-> []
+                                                                         (into
+                                                                           (map (fn [x]
+                                                                                  (invoker-node inc 2 (inc x) 2)))
+                                                                           (range 500))
+                                                                         (into
+                                                                           (map (fn [x]
+                                                                                  (invoker-node inc 2 (inc x) 2)))
+                                                                           (range 500 999))
+                                                                         (conj (terminal-invoker-node inc 2 nil nil nil 2))))
+                                    :get-mode     get-mode
+                                    :get-index    get-index
+                                    :->error     (into-array Object (into []
+                                                                          (take 999)
+                                                                          (repeat 1000)) )
+                                    :->error-out (int-array 999 2)
+                                    ;:error? #(instance? Throwable %)
+                                    :unwrap-state (unwrap 2)}))
+  (c/bench (make-state-call state-compiled2))
   (def filament (Filament.
                      (into-array IFn (-> []
                                                                    (into
                                                                      (map (fn [x]
-                                                                            (invoker-node inc 2 nil (inc x) nil 2)))
+                                                                            (catching-invoker-node inc 2 nil (inc x) nil 2)))
                                                                      (range 500))
                                                                    (into
                                                                      (map (fn [x]
-                                                                            (invoker-node inc 2 nil (inc x) nil 2)))
+                                                                            (catching-invoker-node inc 2 nil (inc x) nil 2)))
                                                                      (range 500 999))
                                                                    (conj (terminal-invoker-node inc 2 nil nil nil 2))))
                      ^"[Ljava.lang.Object;" (make-state)
@@ -420,7 +442,7 @@
 
 
   (def comp-middleware (transduce
-                         (take 5000)
+                         (take 1000)
                          (fn ([acc] acc)
                            ([acc mid]
                             (mid acc)))
@@ -433,7 +455,7 @@
     (fn [request respond raise]
       (handler (inc request) (fn [x] (respond (inc x))) raise)))
   (def comp-async-middleware (transduce
-                               (take 500)
+                               (take 1000)
                                (fn ([acc] acc)
                                  ([acc mid]
                                   (mid acc)))
